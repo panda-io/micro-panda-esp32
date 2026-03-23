@@ -1,7 +1,6 @@
 import gpio::*
 import rtos::*
 import log::*
-import string::*
 
 const BLINK_PIN:    i32 = 2
 const BLINK_PERIOD: i32 = 1000
@@ -9,10 +8,9 @@ const BLINK_PERIOD: i32 = 1000
 var count: i32 = 0
 
 fun app_main()
-    info("app", "micro-panda esp32 ready")
+    info("micro-panda esp32 ready")
     pin_mode(BLINK_PIN, PinMode.OUTPUT)
 
-    var buf:  u8[32]
     var args: i32[1]
 
     var led: PinLevel = PinLevel.LOW
@@ -21,9 +19,9 @@ fun app_main()
         args[0] = count
         if led == PinLevel.LOW
             led = PinLevel.HIGH
-            info("blink", build_string("ON  count={0}", buf, args))
+            info_args("ON  count={0i}", args)
         else
             led = PinLevel.LOW
-            info("blink", build_string("OFF count={0}", buf, args))
+            info_args("OFF count={0i}", args)
         count += 1
         delay_ms(BLINK_PERIOD)
