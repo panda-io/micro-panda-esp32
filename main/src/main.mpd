@@ -11,17 +11,23 @@ fun app_main()
     info("micro-panda esp32 ready")
     pin_mode(BLINK_PIN, PinMode.OUTPUT)
 
-    var args: i32[1]
+    var args: i32[6]
 
     var led: PinLevel = PinLevel.LOW
+    var fixed_value: fixed = 3.14
     while true
         digital_write(BLINK_PIN, led)
         args[0] = count
+        args[1] = fixed_bits(fixed_value)
+        args[3] = float_bits(3.14)
+        args[4] = -1
         if led == PinLevel.LOW
             led = PinLevel.HIGH
-            info_args("ON  count={0i}", args)
+            args[2] = i32(true)
+            info_args("ON  count={0i} fixed={1d} bool={2b} float={3f} u_int={4u}", args)
         else
             led = PinLevel.LOW
-            info_args("OFF count={0i}", args)
+            args[2] = i32(false)
+            info_args("OFF count={0i} fixed={1d} bool={2b} float={3f} u_int={4u}", args)
         count += 1
         delay_ms(BLINK_PERIOD)

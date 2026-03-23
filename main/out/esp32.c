@@ -51,8 +51,8 @@ void console__print_i64(int64_t v);
 void console__print_i32(int32_t v);
 void console__print_i16(int16_t v);
 void console__print_i8(int8_t v);
-void console__print_float(float v, uint32_t decimals);
-void console__print_fixed(int32_t v, uint32_t decimals);
+void console__print_float(float v);
+void console__print_fixed(int32_t v);
 bool string__equals(__Slice_uint8_t a, __Slice_uint8_t b);
 bool string__starts_with(__Slice_uint8_t s, __Slice_uint8_t prefix);
 bool string__ends_with(__Slice_uint8_t s, __Slice_uint8_t suffix);
@@ -70,7 +70,7 @@ uint32_t string__format_i32(__Slice_uint8_t buf, int32_t v);
 static uint32_t string___format_float(__Slice_uint8_t buf, float v);
 static uint32_t string___format_fixed(__Slice_uint8_t buf, int32_t v);
 static uint32_t string___format_bool(__Slice_uint8_t buf, int32_t v);
-__Slice_uint8_t string__build_string(__Slice_uint8_t text, __Slice_uint8_t buf, __Slice_int32_t args);
+__Slice_uint8_t string__format(__Slice_uint8_t text, __Slice_uint8_t buf, __Slice_int32_t args);
 
 const int32_t main__BLINK_PIN = 2;
 const int32_t main__BLINK_PERIOD = 1000;
@@ -81,17 +81,23 @@ static __Fn_void_uint8_t console___write_byte = console___write_byte_default;
 void main__app_main(void) {
   log__info((__Slice_uint8_t){(uint8_t*)"micro-panda esp32 ready", sizeof("micro-panda esp32 ready") - 1});
   gpio__pin_mode(main__BLINK_PIN, PinMode_OUTPUT);
-  int32_t args[1];
+  int32_t args[6];
   PinLevel led = PinLevel_LOW;
+  int32_t fixed_value = 205783;
   while (true) {
     gpio__digital_write(main__BLINK_PIN, led);
     (args[0] = main__count);
+    (args[1] = ((int32_t)fixed_value));
+    (args[3] = __mp_float_to_bits(3.14f));
+    (args[4] = (-1));
     if ((led == PinLevel_LOW)) {
       (led = PinLevel_HIGH);
-      log__info_args((__Slice_uint8_t){(uint8_t*)"ON  count={0i}", sizeof("ON  count={0i}") - 1}, (__Slice_int32_t){args, 1});
+      (args[2] = ((int32_t)(true)));
+      log__info_args((__Slice_uint8_t){(uint8_t*)"ON  count={0i} fixed={1d} bool={2b} float={3f} u_int={4u}", sizeof("ON  count={0i} fixed={1d} bool={2b} float={3f} u_int={4u}") - 1}, (__Slice_int32_t){args, 6});
     } else {
       (led = PinLevel_LOW);
-      log__info_args((__Slice_uint8_t){(uint8_t*)"OFF count={0i}", sizeof("OFF count={0i}") - 1}, (__Slice_int32_t){args, 1});
+      (args[2] = ((int32_t)(false)));
+      log__info_args((__Slice_uint8_t){(uint8_t*)"OFF count={0i} fixed={1d} bool={2b} float={3f} u_int={4u}", sizeof("OFF count={0i} fixed={1d} bool={2b} float={3f} u_int={4u}") - 1}, (__Slice_int32_t){args, 6});
     }
     (main__count += 1);
     __mp_delay_ms(main__BLINK_PERIOD);
@@ -150,15 +156,15 @@ void log__error(__Slice_uint8_t msg) {
 }
 
 void log__info_args(__Slice_uint8_t fmt, __Slice_int32_t args) {
-  log__info(string__build_string(fmt, (__Slice_uint8_t){log___buf, 128}, args));
+  log__info(string__format(fmt, (__Slice_uint8_t){log___buf, 128}, args));
 }
 
 void log__warn_args(__Slice_uint8_t fmt, __Slice_int32_t args) {
-  log__warn(string__build_string(fmt, (__Slice_uint8_t){log___buf, 128}, args));
+  log__warn(string__format(fmt, (__Slice_uint8_t){log___buf, 128}, args));
 }
 
 void log__error_args(__Slice_uint8_t fmt, __Slice_int32_t args) {
-  log__error(string__build_string(fmt, (__Slice_uint8_t){log___buf, 128}, args));
+  log__error(string__format(fmt, (__Slice_uint8_t){log___buf, 128}, args));
 }
 
 static void console___write_byte_default(uint8_t b) {
@@ -252,7 +258,7 @@ void console__print_i8(int8_t v) {
   console__print_i64(((int64_t)(v)));
 }
 
-void console__print_float(float v, uint32_t decimals) {
+void console__print_float(float v) {
   float abs = v;
   if ((v < 0.0f)) {
     console__write_byte('-');
@@ -260,21 +266,19 @@ void console__print_float(float v, uint32_t decimals) {
   }
   int32_t int_part = ((int32_t)(abs));
   console__print_i32(int_part);
-  if ((decimals > 0)) {
-    console__write_byte('.');
-    float frac = (abs - ((float)(int_part)));
-    uint32_t i = 0;
-    while ((i < decimals)) {
-      (frac = (frac * 10.0f));
-      int32_t digit = ((int32_t)(frac));
-      console__write_byte(((uint8_t)((digit + 48))));
-      (frac = (frac - ((float)(digit))));
-      (i += 1);
-    }
+  console__write_byte('.');
+  float frac = (abs - ((float)(int_part)));
+  uint32_t i = 0;
+  while ((i < 4)) {
+    (frac = (frac * 10.0f));
+    int32_t digit = ((int32_t)(frac));
+    console__write_byte(((uint8_t)((digit + 48))));
+    (frac = (frac - ((float)(digit))));
+    (i += 1);
   }
 }
 
-void console__print_fixed(int32_t v, uint32_t decimals) {
+void console__print_fixed(int32_t v) {
   uint32_t abs = 0;
   if ((v < 0)) {
     console__write_byte('-');
@@ -283,16 +287,14 @@ void console__print_fixed(int32_t v, uint32_t decimals) {
     (abs = ((uint32_t)(v)));
   }
   console__print_u32((abs >> 16));
-  if ((decimals > 0)) {
-    console__write_byte('.');
-    uint32_t frac = (abs & 0xFFFF);
-    uint32_t i = 0;
-    while ((i < decimals)) {
-      (frac *= 10);
-      console__write_byte(((uint8_t)(((frac >> 16) + 48))));
-      (frac = (frac & 0xFFFF));
-      (i += 1);
-    }
+  console__write_byte('.');
+  uint32_t frac = (abs & 0xFFFF);
+  uint32_t i = 0;
+  while ((i < 4)) {
+    (frac *= 10);
+    console__write_byte(((uint8_t)(((frac >> 16) + 48))));
+    (frac = (frac & 0xFFFF));
+    (i += 1);
   }
 }
 
@@ -480,7 +482,7 @@ static uint32_t string___format_float(__Slice_uint8_t buf, float v) {
   (bi += 1);
   float frac = (abs - ((float)(int_part)));
   uint32_t d = 0;
-  while ((d < 2)) {
+  while ((d < 4)) {
     (frac = (frac * 10.0f));
     int32_t digit = ((int32_t)(frac));
     (buf.ptr[bi] = ((uint8_t)((digit + 48))));
@@ -506,7 +508,7 @@ static uint32_t string___format_fixed(__Slice_uint8_t buf, int32_t v) {
   (bi += 1);
   uint32_t frac = (abs & 0xFFFF);
   uint32_t d = 0;
-  while ((d < 2)) {
+  while ((d < 4)) {
     (frac *= 10);
     (buf.ptr[bi] = ((uint8_t)(((frac >> 16) + 48))));
     (bi += 1);
@@ -532,7 +534,7 @@ static uint32_t string___format_bool(__Slice_uint8_t buf, int32_t v) {
   return 5;
 }
 
-__Slice_uint8_t string__build_string(__Slice_uint8_t text, __Slice_uint8_t buf, __Slice_int32_t args) {
+__Slice_uint8_t string__format(__Slice_uint8_t text, __Slice_uint8_t buf, __Slice_int32_t args) {
   uint32_t ti = 0;
   uint32_t bi = 0;
   while (((ti < text.size) && (bi < buf.size))) {
