@@ -3,7 +3,7 @@
   "idf.openOcdConfigs": [
     "board/esp32-wrover-kit-3.3v.cfg"
   ],
-  "idf.port": "/dev/tty.usbserial-110",
+  "idf.port": "/dev/tty.usbserial-10",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32"
   },
@@ -13,5 +13,6 @@
     "--query-driver=**",
     "--compile-commands-dir=/Users/sang/Dev/panda-io/micro-panda-esp32/build"
   ],
-  "idf.flashType": "UART"
+  "idf.flashType": "UART",
+  "idf.monitorPort": "/dev/tty.usbserial-10"
 }

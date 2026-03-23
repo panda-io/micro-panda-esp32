@@ -1,10 +1,14 @@
 import gpio::*
 import rtos::*
+import console::*
 
 const BLINK_PIN:    i32 = 2     // GPIO2 — built-in LED on most ESP32 dev boards
 const BLINK_PERIOD: i32 = 1000  // ms
 
+var count: i32 = 0
+
 fun app_main()
+    print_str("micro-panda esp32 ready\n")
     pin_mode(BLINK_PIN, PinMode.OUTPUT)
 
     var led: PinLevel = PinLevel.LOW
@@ -12,6 +16,11 @@ fun app_main()
         digital_write(BLINK_PIN, led)
         if led == PinLevel.LOW
             led = PinLevel.HIGH
+            print_str("LED ON  count=")
         else
             led = PinLevel.LOW
+            print_str("LED OFF count=")
+        print_i32(count)
+        println()
+        count += 1
         delay_ms(BLINK_PERIOD)
