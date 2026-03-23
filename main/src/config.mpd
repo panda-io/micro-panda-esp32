@@ -1,0 +1,2 @@
+// PWM channels: 6 for C3/C6/H2, 8 for ESP32/S2/S3. Use 6 as safe default.
+const PWM_MAX_CHANNELS: i32 = 6

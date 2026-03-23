@@ -1,33 +1,26 @@
-import gpio::*
+import pwm::*
 import rtos::*
 import log::*
 
-const BLINK_PIN:    i32 = 2
-const BLINK_PERIOD: i32 = 1000
+const LED_PIN:    i32 = 2
+const FADE_STEP:  i32 = 32
+const FADE_DELAY: i32 = 20
 
-var count: i32 = 0
+var duty: i32 = 0
+var dir:  i32 = 1
 
 fun app_main()
     info("micro-panda esp32 ready")
-    pin_mode(BLINK_PIN, PinMode.OUTPUT)
+    pwm_timer(PwmTimer.TIMER0, 5000)
+    pwm_attach(LED_PIN, PwmTimer.TIMER0)
 
-    var args: i32[6]
-
-    var led: PinLevel = PinLevel.LOW
-    var fixed_value: fixed = 3.14
     while true
-        digital_write(BLINK_PIN, led)
-        args[0] = count
-        args[1] = fixed_bits(fixed_value)
-        args[3] = float_bits(3.14)
-        args[4] = -1
-        if led == PinLevel.LOW
-            led = PinLevel.HIGH
-            args[2] = i32(true)
-            info_args("ON  count={0i} fixed={1d} bool={2b} float={3f} u_int={4u}", args)
-        else
-            led = PinLevel.LOW
-            args[2] = i32(false)
-            info_args("OFF count={0i} fixed={1d} bool={2b} float={3f} u_int={4u}", args)
-        count += 1
-        delay_ms(BLINK_PERIOD)
+        pwm_start(LED_PIN, duty)
+        duty += dir * FADE_STEP
+        if duty >= 1023
+            duty = 1023
+            dir = -1
+        if duty <= 0
+            duty = 0
+            dir = 1
+        delay_ms(FADE_DELAY)
