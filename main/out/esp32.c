@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "driver/gpio.h"
 #include "driver/ledc.h"
 static inline void __mp_pwm_timer_init(int32_t freq_hz, int32_t timer) {
     ledc_timer_config_t t = {
@@ -43,13 +44,30 @@ typedef struct { uint8_t* ptr; size_t size; } __Slice_uint8_t;
 typedef struct { int32_t* ptr; size_t size; } __Slice_int32_t;
 
 typedef enum {
+  PinMode_INPUT = 1,
+  PinMode_OUTPUT = 3,
+  PinMode_INPUT_PULLUP = 5,
+  PinMode_INPUT_PULLDOWN = 6,
+} PinMode;
+
+typedef enum {
+  PinLevel_LOW = 0,
+  PinLevel_HIGH = 1,
+} PinLevel;
+
+typedef enum {
   PwmTimer_TIMER0 = 0,
   PwmTimer_TIMER1 = 1,
   PwmTimer_TIMER2 = 2,
   PwmTimer_TIMER3 = 3,
 } PwmTimer;
 
+void main__blink(void);
+void main__fade(void);
 void main__app_main(void);
+void gpio__pin_mode(int32_t pin, PinMode mode);
+static inline void gpio__digital_write(int32_t pin, PinLevel value);
+static inline PinLevel gpio__digital_read(int32_t pin);
 static int32_t pwm___find(int32_t pin);
 static int32_t pwm___alloc(int32_t pin);
 void pwm__pwm_timer(PwmTimer timer, int32_t freq);
@@ -101,6 +119,7 @@ __Slice_uint8_t string__format(__Slice_uint8_t text, __Slice_uint8_t buf, __Slic
 const int32_t main__LED_PIN = 2;
 const int32_t main__FADE_STEP = 32;
 const int32_t main__FADE_DELAY = 20;
+const int32_t main__BLINK_MS = 500;
 int32_t main__duty = 0;
 int32_t main__dir = 1;
 static int32_t pwm___pins[6];
@@ -108,8 +127,17 @@ static uint8_t log___buf[128];
 const int32_t config__PWM_MAX_CHANNELS = 6;
 static __Fn_void_uint8_t console___write_byte = console___write_byte_default;
 
-void main__app_main(void) {
-  log__info((__Slice_uint8_t){(uint8_t*)"micro-panda esp32 ready", sizeof("micro-panda esp32 ready") - 1});
+void main__blink(void) {
+  gpio__pin_mode(main__LED_PIN, PinMode_OUTPUT);
+  while (true) {
+    gpio__digital_write(main__LED_PIN, PinLevel_HIGH);
+    __mp_delay_ms(main__BLINK_MS);
+    gpio__digital_write(main__LED_PIN, PinLevel_LOW);
+    __mp_delay_ms(main__BLINK_MS);
+  }
+}
+
+void main__fade(void) {
   pwm__pwm_timer(PwmTimer_TIMER0, 5000);
   pwm__pwm_attach(main__LED_PIN, PwmTimer_TIMER0);
   while (true) {
@@ -125,6 +153,32 @@ void main__app_main(void) {
     }
     __mp_delay_ms(main__FADE_DELAY);
   }
+}
+
+void main__app_main(void) {
+  log__info((__Slice_uint8_t){(uint8_t*)"micro-panda esp32 ready", sizeof("micro-panda esp32 ready") - 1});
+  main__blink();
+}
+
+void gpio__pin_mode(int32_t pin, PinMode mode) {
+  gpio_reset_pin(pin);
+  if ((mode == PinMode_INPUT_PULLUP)) {
+    gpio_set_direction(pin, ((int32_t)(PinMode_INPUT)));
+    gpio_set_pull_mode(pin, 0);
+  } else if ((mode == PinMode_INPUT_PULLDOWN)) {
+    gpio_set_direction(pin, ((int32_t)(PinMode_INPUT)));
+    gpio_set_pull_mode(pin, 1);
+  } else {
+    gpio_set_direction(pin, ((int32_t)(mode)));
+  }
+}
+
+static inline void gpio__digital_write(int32_t pin, PinLevel value) {
+  gpio_set_level(pin, ((int32_t)(value)));
+}
+
+static inline PinLevel gpio__digital_read(int32_t pin) {
+  return ((PinLevel)(gpio_get_level(pin)));
 }
 
 static int32_t pwm___find(int32_t pin) {
