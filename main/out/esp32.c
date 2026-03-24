@@ -152,15 +152,16 @@ static __Fn_void_uint8_t console___write_byte = console___write_byte_default;
 
 void main__blink(void) {
   gpio__pin_mode(main__LED_PIN, PinMode_OUTPUT);
-  int32_t args[1];
-  (args[0] = 0);
+  int32_t args[2];
   while (true) {
     gpio__digital_write(main__LED_PIN, PinLevel_HIGH);
     __mp_delay_ms(main__BLINK_MS);
     gpio__digital_write(main__LED_PIN, PinLevel_LOW);
     __mp_delay_ms(main__BLINK_MS);
     (args[0] = __mp_time_ms());
-    log__info_args((__Slice_uint8_t){(uint8_t*)"current time: {0i} ms", sizeof("current time: {0i} ms") - 1}, (__Slice_int32_t){args, 1});
+    (args[1] = xTaskGetTickCount());
+    log__info_args((__Slice_uint8_t){(uint8_t*)"current time: {0i} ms", sizeof("current time: {0i} ms") - 1}, (__Slice_int32_t){args, 2});
+    log__info_args((__Slice_uint8_t){(uint8_t*)"current ticks: {1i}", sizeof("current ticks: {1i}") - 1}, (__Slice_int32_t){args, 2});
   }
 }
 
@@ -187,7 +188,7 @@ void main__task_producer(void) {
   int32_t args[1];
   (args[0] = __mp_task_core_id());
   while ((count > 0)) {
-    log__info_args((__Slice_uint8_t){(uint8_t*)"produce job in cpu: {0i}", sizeof("produce job in cpu: {0i}") - 1}, (__Slice_int32_t){args, 1});
+    log__info_args((__Slice_uint8_t){(uint8_t*)"produce job in cpu core: {0i}", sizeof("produce job in cpu core: {0i}") - 1}, (__Slice_int32_t){args, 1});
     __mp_task_notify(main__task_handler);
     (count -= 1);
     __mp_delay_ms(512);
@@ -200,7 +201,7 @@ void main__task_consumer(void) {
   (args[0] = __mp_task_core_id());
   while (true) {
     __mp_task_wait();
-    log__info_args((__Slice_uint8_t){(uint8_t*)"executing task in cpu: {0i}", sizeof("executing task in cpu: {0i}") - 1}, (__Slice_int32_t){args, 1});
+    log__info_args((__Slice_uint8_t){(uint8_t*)"executing task in cpu core: {0i}", sizeof("executing task in cpu core: {0i}") - 1}, (__Slice_int32_t){args, 1});
   }
 }
 
@@ -208,6 +209,7 @@ void main__app_main(void) {
   log__info((__Slice_uint8_t){(uint8_t*)"micro-panda esp32 ready", sizeof("micro-panda esp32 ready") - 1});
   (main__task_handler = __mp_task_create_pinned(main__task_consumer, 1024, 1, 1));
   __mp_task_create(main__task_producer, 1024, 1);
+  main__blink();
   __mp_task_exit();
 }
 
