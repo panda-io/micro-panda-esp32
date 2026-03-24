@@ -1,10 +1,10 @@
 import config::*
 
-@raw("#include \"driver/ledc.h\"")
-
 // ── ESP-IDF LEDC bindings (private) ──────────────────────────────────────────
 
 @raw("""
+#include "driver/ledc.h"
+
 static inline void __mp_pwm_timer_init(int32_t freq_hz, int32_t timer) {
     ledc_timer_config_t t = {
         .speed_mode      = LEDC_LOW_SPEED_MODE,

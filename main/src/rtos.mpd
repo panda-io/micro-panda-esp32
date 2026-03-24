@@ -1,13 +1,33 @@
-@raw("#include \"freertos/FreeRTOS.h\"")
-@raw("#include \"freertos/task.h\"")
+// ── Free RTOS bindings (private) ──────────────────────────────────────────
 
-// pdMS_TO_TICKS is a macro — wrap it in a plain C helper so @extern can bind to it.
-@raw("static inline void __mp_delay_ms(int32_t ms) { vTaskDelay(pdMS_TO_TICKS(ms)); }")
+@raw("""
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+static inline void     __mp_delay_ms(int32_t ms)   { vTaskDelay(pdMS_TO_TICKS(ms)); }
+static inline int32_t  __mp_time_ms(void)           { return (int32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS); }
+static inline void     __mp_task_create(void (*fn)(void*), int32_t stack, int32_t priority) {
+    xTaskCreate((TaskFunction_t)fn, "", (uint32_t)stack, NULL, (UBaseType_t)priority, NULL);
+}
+static inline void     __mp_task_exit(void)         { vTaskDelete(NULL); }
+""")
 
 // Delay by raw FreeRTOS ticks.
 @extern("vTaskDelay")
 fun delay(ticks: i32)
 
-// Delay by milliseconds. Converts via pdMS_TO_TICKS (correct for any tick rate).
+// Delay by milliseconds.
 @extern("__mp_delay_ms")
 fun delay_ms(ms: i32)
+
+// Returns milliseconds elapsed since boot.
+@extern("__mp_time_ms")
+fun time_ms(): i32
+
+// Spin up a new FreeRTOS task. stack is bytes, priority is FreeRTOS priority level.
+@extern("__mp_task_create")
+fun task_create(fn: fun(void), stack: i32, priority: i32)
+
+// Stop the calling task. Must be called from inside the task itself.
+@extern("__mp_task_exit")
+fun task_exit()
