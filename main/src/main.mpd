@@ -10,6 +10,7 @@ const BLINK_MS:   i32 = 500
 
 var duty: i32 = 0
 var dir:  i32 = 1
+var task_handler: &void = null
 
 fun blink()
     pin_mode(LED_PIN, PinMode.OUTPUT)
@@ -37,15 +38,25 @@ fun fade()
             dir = 1
         delay_ms(FADE_DELAY)
 
-fun task()
-    var count: i32 = 5
+fun task_producer()
+    var count: i32 = 10
     while count > 0
-        info("executing task...")
+        info("produce job...")
+        task_notify(task_handler)
         count -= 1
     task_exit()
 
+fun task_consumer()
+    while true
+        task_wait()
+        info("executing task...")
+
 fun app_main()
     info("micro-panda esp32 ready")
-    task_create(task, 1024, 1)
+
+    task_handler = task_create(task_consumer, 1024, 1)
+    task_create(task_producer, 1024, 1)
+
     blink()
     // fade()
+

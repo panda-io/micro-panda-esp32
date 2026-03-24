@@ -35,12 +35,23 @@ static inline void __mp_pwm_stop(int32_t ch) {
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-static inline void     __mp_delay_ms(int32_t ms)   { vTaskDelay(pdMS_TO_TICKS(ms)); }
-static inline int32_t  __mp_time_ms(void)           { return (int32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS); }
-static inline void     __mp_task_create(void (*fn)(void), int32_t stack, int32_t priority) {
-    xTaskCreate((TaskFunction_t)(void*)fn, "", (uint32_t)stack, NULL, (UBaseType_t)priority, NULL);
+static inline void    __mp_delay_ms(int32_t ms)     { vTaskDelay(pdMS_TO_TICKS(ms)); }
+static inline int32_t __mp_time_ms(void)             { return (int32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS); }
+static inline int32_t __mp_get_core(void)            { return (int32_t)xPortGetCoreID(); }
+
+static inline void*   __mp_task_create(void (*fn)(void), int32_t stack, int32_t priority) {
+    TaskHandle_t h = NULL;
+    xTaskCreate((TaskFunction_t)(void*)fn, "", (uint32_t)stack, NULL, (UBaseType_t)priority, &h);
+    return (void*)h;
 }
-static inline void     __mp_task_exit(void)         { vTaskDelete(NULL); }
+static inline void*   __mp_task_create_pinned(void (*fn)(void), int32_t stack, int32_t priority, int32_t core) {
+    TaskHandle_t h = NULL;
+    xTaskCreatePinnedToCore((TaskFunction_t)(void*)fn, "", (uint32_t)stack, NULL, (UBaseType_t)priority, &h, (BaseType_t)core);
+    return (void*)h;
+}
+static inline void    __mp_task_exit(void)           { vTaskDelete(NULL); }
+static inline void    __mp_task_notify(void* handle) { xTaskNotify((TaskHandle_t)handle, 0, eNoAction); }
+static inline int32_t __mp_task_wait(void)           { return (int32_t)ulTaskNotifyTake(pdTRUE, portMAX_DELAY); }
 #include <stdio.h>
 static inline int32_t __mp_float_to_bits(float f) { int32_t v; __builtin_memcpy(&v, &f, 4); return v; }
 static inline float __mp_bits_to_float(int32_t v) { float f; __builtin_memcpy(&f, &v, 4); return f; }
@@ -72,7 +83,8 @@ typedef enum {
 
 void main__blink(void);
 void main__fade(void);
-void main__task(void);
+void main__task_producer(void);
+void main__task_consumer(void);
 void main__app_main(void);
 void gpio__pin_mode(int32_t pin, PinMode mode);
 static inline void gpio__digital_write(int32_t pin, PinLevel value);
@@ -131,9 +143,11 @@ const int32_t main__FADE_DELAY = 20;
 const int32_t main__BLINK_MS = 500;
 int32_t main__duty = 0;
 int32_t main__dir = 1;
+void* main__task_handler = NULL;
 static int32_t pwm___pins[6];
 static uint8_t log___buf[128];
 const int32_t config__PWM_MAX_CHANNELS = 6;
+const int32_t config__RTOS_MAX_TASKS = 10;
 static __Fn_void_uint8_t console___write_byte = console___write_byte_default;
 
 void main__blink(void) {
@@ -168,18 +182,27 @@ void main__fade(void) {
   }
 }
 
-void main__task(void) {
-  int32_t count = 5;
+void main__task_producer(void) {
+  int32_t count = 10;
   while ((count > 0)) {
-    log__info((__Slice_uint8_t){(uint8_t*)"executing task...", sizeof("executing task...") - 1});
+    log__info((__Slice_uint8_t){(uint8_t*)"produce job...", sizeof("produce job...") - 1});
+    __mp_task_notify(main__task_handler);
     (count -= 1);
   }
   __mp_task_exit();
 }
 
+void main__task_consumer(void) {
+  while (true) {
+    __mp_task_wait();
+    log__info((__Slice_uint8_t){(uint8_t*)"executing task...", sizeof("executing task...") - 1});
+  }
+}
+
 void main__app_main(void) {
   log__info((__Slice_uint8_t){(uint8_t*)"micro-panda esp32 ready", sizeof("micro-panda esp32 ready") - 1});
-  __mp_task_create(main__task, 1024, 1);
+  (main__task_handler = __mp_task_create(main__task_consumer, 1024, 1));
+  __mp_task_create(main__task_producer, 1024, 1);
   main__blink();
 }
 

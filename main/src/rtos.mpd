@@ -4,13 +4,26 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-static inline void     __mp_delay_ms(int32_t ms)   { vTaskDelay(pdMS_TO_TICKS(ms)); }
-static inline int32_t  __mp_time_ms(void)           { return (int32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS); }
-static inline void     __mp_task_create(void (*fn)(void), int32_t stack, int32_t priority) {
-    xTaskCreate((TaskFunction_t)(void*)fn, "", (uint32_t)stack, NULL, (UBaseType_t)priority, NULL);
+static inline void    __mp_delay_ms(int32_t ms)     { vTaskDelay(pdMS_TO_TICKS(ms)); }
+static inline int32_t __mp_time_ms(void)             { return (int32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS); }
+static inline int32_t __mp_get_core(void)            { return (int32_t)xPortGetCoreID(); }
+
+static inline void*   __mp_task_create(void (*fn)(void), int32_t stack, int32_t priority) {
+    TaskHandle_t h = NULL;
+    xTaskCreate((TaskFunction_t)(void*)fn, "", (uint32_t)stack, NULL, (UBaseType_t)priority, &h);
+    return (void*)h;
 }
-static inline void     __mp_task_exit(void)         { vTaskDelete(NULL); }
+static inline void*   __mp_task_create_pinned(void (*fn)(void), int32_t stack, int32_t priority, int32_t core) {
+    TaskHandle_t h = NULL;
+    xTaskCreatePinnedToCore((TaskFunction_t)(void*)fn, "", (uint32_t)stack, NULL, (UBaseType_t)priority, &h, (BaseType_t)core);
+    return (void*)h;
+}
+static inline void    __mp_task_exit(void)           { vTaskDelete(NULL); }
+static inline void    __mp_task_notify(void* handle) { xTaskNotify((TaskHandle_t)handle, 0, eNoAction); }
+static inline int32_t __mp_task_wait(void)           { return (int32_t)ulTaskNotifyTake(pdTRUE, portMAX_DELAY); }
 """)
+
+// ── Time ──────────────────────────────────────────────────────────────────
 
 // Delay by raw FreeRTOS ticks.
 @extern("vTaskDelay")
@@ -21,13 +34,38 @@ fun delay(ticks: i32)
 fun delay_ms(ms: i32)
 
 // Returns milliseconds elapsed since boot.
-@extern("__mp_time_ms")
+@extern("__mp_time_ms()")
 fun time_ms(): i32
 
-// Spin up a new FreeRTOS task. stack is bytes, priority is FreeRTOS priority level.
+// ── Core ──────────────────────────────────────────────────────────────────
+
+// Returns the CPU core ID the calling code is running on (0 or 1).
+@extern("__mp_get_core()")
+fun get_core(): i32
+
+// ── Tasks ─────────────────────────────────────────────────────────────────
+
+// Spin up a FreeRTOS task. Returns an opaque handle (&void).
+// stack is bytes; priority is FreeRTOS priority level.
+// Use task_notify/task_wait with the returned handle for synchronisation.
 @extern("__mp_task_create")
-fun task_create(fn: fun(void), stack: i32, priority: i32)
+fun task_create(fn: fun(void), stack: i32, priority: i32): &void
+
+// Spin up a FreeRTOS task pinned to a specific CPU core (0 or 1).
+@extern("__mp_task_create_pinned")
+fun task_create_pinned(fn: fun(void), stack: i32, priority: i32, core: i32): &void
 
 // Stop the calling task. Must be called from inside the task itself.
-@extern("__mp_task_exit")
+@extern("__mp_task_exit()")
 fun task_exit()
+
+// ── Task notifications ────────────────────────────────────────────────────
+
+// Send a notification to another task (wake it if blocked in task_wait).
+@extern("__mp_task_notify")
+fun task_notify(handle: &void)
+
+// Block until notified. Returns the notification value.
+// Clears the notification on exit (binary semaphore pattern).
+@extern("__mp_task_wait()")
+fun task_wait(): i32
