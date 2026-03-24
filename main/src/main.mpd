@@ -40,23 +40,29 @@ fun fade()
 
 fun task_producer()
     var count: i32 = 10
+    var args: i32[1]
+    args[0] = task_cpu_core()
     while count > 0
-        info("produce job...")
+        info_args("produce job in cpu: {0i}", args)
         task_notify(task_handler)
         count -= 1
+        delay_ms(512)
     task_exit()
 
 fun task_consumer()
+    var args: i32[1]
+    args[0] = task_cpu_core()
     while true
         task_wait()
-        info("executing task...")
+        info_args("executing task in cpu: {0i}", args)
 
 fun app_main()
     info("micro-panda esp32 ready")
 
-    task_handler = task_create(task_consumer, 1024, 1)
+    task_handler = task_create_pinned(task_consumer, 1024, 1, 1)
     task_create(task_producer, 1024, 1)
 
-    blink()
+    // blink()
     // fade()
+    task_exit()
 

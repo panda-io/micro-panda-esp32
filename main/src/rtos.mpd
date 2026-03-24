@@ -6,7 +6,7 @@
 
 static inline void    __mp_delay_ms(int32_t ms)     { vTaskDelay(pdMS_TO_TICKS(ms)); }
 static inline int32_t __mp_time_ms(void)             { return (int32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS); }
-static inline int32_t __mp_get_core(void)            { return (int32_t)xPortGetCoreID(); }
+static inline int32_t __mp_task_core_id(void)            { return (int32_t)xPortGetCoreID(); }
 
 static inline void*   __mp_task_create(void (*fn)(void), int32_t stack, int32_t priority) {
     TaskHandle_t h = NULL;
@@ -37,12 +37,6 @@ fun delay_ms(ms: i32)
 @extern("__mp_time_ms()")
 fun time_ms(): i32
 
-// ── Core ──────────────────────────────────────────────────────────────────
-
-// Returns the CPU core ID the calling code is running on (0 or 1).
-@extern("__mp_get_core()")
-fun get_core(): i32
-
 // ── Tasks ─────────────────────────────────────────────────────────────────
 
 // Spin up a FreeRTOS task. Returns an opaque handle (&void).
@@ -54,6 +48,10 @@ fun task_create(fn: fun(void), stack: i32, priority: i32): &void
 // Spin up a FreeRTOS task pinned to a specific CPU core (0 or 1).
 @extern("__mp_task_create_pinned")
 fun task_create_pinned(fn: fun(void), stack: i32, priority: i32, core: i32): &void
+
+// Returns the CPU core ID the calling code is running on (0 or 1).
+@extern("__mp_task_core_id()")
+fun task_cpu_core(): i32
 
 // Stop the calling task. Must be called from inside the task itself.
 @extern("__mp_task_exit()")

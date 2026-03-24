@@ -37,7 +37,7 @@ static inline void __mp_pwm_stop(int32_t ch) {
 
 static inline void    __mp_delay_ms(int32_t ms)     { vTaskDelay(pdMS_TO_TICKS(ms)); }
 static inline int32_t __mp_time_ms(void)             { return (int32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS); }
-static inline int32_t __mp_get_core(void)            { return (int32_t)xPortGetCoreID(); }
+static inline int32_t __mp_task_core_id(void)            { return (int32_t)xPortGetCoreID(); }
 
 static inline void*   __mp_task_create(void (*fn)(void), int32_t stack, int32_t priority) {
     TaskHandle_t h = NULL;
@@ -184,26 +184,31 @@ void main__fade(void) {
 
 void main__task_producer(void) {
   int32_t count = 10;
+  int32_t args[1];
+  (args[0] = __mp_task_core_id());
   while ((count > 0)) {
-    log__info((__Slice_uint8_t){(uint8_t*)"produce job...", sizeof("produce job...") - 1});
+    log__info_args((__Slice_uint8_t){(uint8_t*)"produce job in cpu: {0i}", sizeof("produce job in cpu: {0i}") - 1}, (__Slice_int32_t){args, 1});
     __mp_task_notify(main__task_handler);
     (count -= 1);
+    __mp_delay_ms(512);
   }
   __mp_task_exit();
 }
 
 void main__task_consumer(void) {
+  int32_t args[1];
+  (args[0] = __mp_task_core_id());
   while (true) {
     __mp_task_wait();
-    log__info((__Slice_uint8_t){(uint8_t*)"executing task...", sizeof("executing task...") - 1});
+    log__info_args((__Slice_uint8_t){(uint8_t*)"executing task in cpu: {0i}", sizeof("executing task in cpu: {0i}") - 1}, (__Slice_int32_t){args, 1});
   }
 }
 
 void main__app_main(void) {
   log__info((__Slice_uint8_t){(uint8_t*)"micro-panda esp32 ready", sizeof("micro-panda esp32 ready") - 1});
-  (main__task_handler = __mp_task_create(main__task_consumer, 1024, 1));
+  (main__task_handler = __mp_task_create_pinned(main__task_consumer, 1024, 1, 1));
   __mp_task_create(main__task_producer, 1024, 1);
-  main__blink();
+  __mp_task_exit();
 }
 
 void gpio__pin_mode(int32_t pin, PinMode mode) {
