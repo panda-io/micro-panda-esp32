@@ -21,7 +21,7 @@ fun blink()
         digital_write(LED_PIN, PinLevel.LOW)
         delay_ms(BLINK_MS)
         args[0] = time_ms()
-        info_args("current time: {0i}", args)
+        info_args("current time: {0i} ms", args)
 
 fun fade()
     pwm_timer(PwmTimer.TIMER0, 5000)
@@ -41,10 +41,11 @@ fun task()
     var count: i32 = 5
     while count > 0
         info("executing task...")
+        count -= 1
     task_exit()
 
 fun app_main()
     info("micro-panda esp32 ready")
-    task_create(task, 32, 1)
+    task_create(task, 1024, 1)
     blink()
     // fade()

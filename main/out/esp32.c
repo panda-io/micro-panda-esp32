@@ -37,8 +37,8 @@ static inline void __mp_pwm_stop(int32_t ch) {
 
 static inline void     __mp_delay_ms(int32_t ms)   { vTaskDelay(pdMS_TO_TICKS(ms)); }
 static inline int32_t  __mp_time_ms(void)           { return (int32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS); }
-static inline void     __mp_task_create(void (*fn)(void*), int32_t stack, int32_t priority) {
-    xTaskCreate((TaskFunction_t)fn, "", (uint32_t)stack, NULL, (UBaseType_t)priority, NULL);
+static inline void     __mp_task_create(void (*fn)(void), int32_t stack, int32_t priority) {
+    xTaskCreate((TaskFunction_t)(void*)fn, "", (uint32_t)stack, NULL, (UBaseType_t)priority, NULL);
 }
 static inline void     __mp_task_exit(void)         { vTaskDelete(NULL); }
 #include <stdio.h>
@@ -145,8 +145,8 @@ void main__blink(void) {
     __mp_delay_ms(main__BLINK_MS);
     gpio__digital_write(main__LED_PIN, PinLevel_LOW);
     __mp_delay_ms(main__BLINK_MS);
-    (args[0] = __mp_time_ms);
-    log__info_args((__Slice_uint8_t){(uint8_t*)"current time: {0i}", sizeof("current time: {0i}") - 1}, (__Slice_int32_t){args, 1});
+    (args[0] = __mp_time_ms());
+    log__info_args((__Slice_uint8_t){(uint8_t*)"current time: {0i} ms", sizeof("current time: {0i} ms") - 1}, (__Slice_int32_t){args, 1});
   }
 }
 
@@ -172,13 +172,14 @@ void main__task(void) {
   int32_t count = 5;
   while ((count > 0)) {
     log__info((__Slice_uint8_t){(uint8_t*)"executing task...", sizeof("executing task...") - 1});
+    (count -= 1);
   }
-  __mp_task_exit;
+  __mp_task_exit();
 }
 
 void main__app_main(void) {
   log__info((__Slice_uint8_t){(uint8_t*)"micro-panda esp32 ready", sizeof("micro-panda esp32 ready") - 1});
-  __mp_task_create(main__task, 32, 1);
+  __mp_task_create(main__task, 1024, 1);
   main__blink();
 }
 

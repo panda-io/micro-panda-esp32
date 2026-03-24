@@ -6,8 +6,8 @@
 
 static inline void     __mp_delay_ms(int32_t ms)   { vTaskDelay(pdMS_TO_TICKS(ms)); }
 static inline int32_t  __mp_time_ms(void)           { return (int32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS); }
-static inline void     __mp_task_create(void (*fn)(void*), int32_t stack, int32_t priority) {
-    xTaskCreate((TaskFunction_t)fn, "", (uint32_t)stack, NULL, (UBaseType_t)priority, NULL);
+static inline void     __mp_task_create(void (*fn)(void), int32_t stack, int32_t priority) {
+    xTaskCreate((TaskFunction_t)(void*)fn, "", (uint32_t)stack, NULL, (UBaseType_t)priority, NULL);
 }
 static inline void     __mp_task_exit(void)         { vTaskDelete(NULL); }
 """)
