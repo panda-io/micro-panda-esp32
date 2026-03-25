@@ -1,0 +1,58 @@
+// ── ADC bindings ──────────────────────────────────────────────────────────
+
+@raw("""
+#include "esp_adc/adc_oneshot.h"
+
+// One handle per ADC unit — IDF supports ADC_UNIT_1 and ADC_UNIT_2.
+// ADC2 conflicts with WiFi; we lazily init only the unit the pin belongs to.
+static adc_oneshot_unit_handle_t __mp_adc_unit[2] = {NULL, NULL};
+static adc_bitwidth_t            __mp_adc_bits = ADC_BITWIDTH_12;
+// 20 channels max across both units — indexed by adc_channel_t (0–9 per unit)
+static bool __mp_adc_ch_init[2][10] = {{0}};
+
+static inline adc_oneshot_unit_handle_t __mp_adc_ensure_unit(adc_unit_t unit) {
+    if (__mp_adc_unit[unit] == NULL) {
+        adc_oneshot_unit_init_cfg_t cfg = { .unit_id = unit };
+        adc_oneshot_new_unit(&cfg, &__mp_adc_unit[unit]);
+    }
+    return __mp_adc_unit[unit];
+}
+
+static inline void __mp_analog_resolution(int32_t bits) {
+    __mp_adc_bits = (adc_bitwidth_t)bits;
+    for (int i = 0; i < 10; i++) { __mp_adc_ch_init[0][i] = false; __mp_adc_ch_init[1][i] = false; }
+}
+
+static inline int32_t __mp_analog_read(int32_t pin) {
+    adc_unit_t    unit;
+    adc_channel_t ch;
+    // adc_oneshot_io_to_channel resolves pin → unit + channel for any ESP32 variant
+    if (adc_oneshot_io_to_channel((int)pin, &unit, &ch) != ESP_OK) return -1;
+    adc_oneshot_unit_handle_t h = __mp_adc_ensure_unit(unit);
+    if (!__mp_adc_ch_init[unit][ch]) {
+        adc_oneshot_chan_cfg_t cfg = {
+            .bitwidth = __mp_adc_bits,
+            .atten    = ADC_ATTEN_DB_12,
+        };
+        adc_oneshot_config_channel(h, ch, &cfg);
+        __mp_adc_ch_init[unit][ch] = true;
+    }
+    int raw = 0;
+    adc_oneshot_read(h, ch, &raw);
+    return (int32_t)raw;
+}
+""")
+
+// ── public API ────────────────────────────────────────────────────────────
+
+// Set ADC resolution in bits (9–12). Default is 12 (0–4095).
+// Call once at startup before analog_read.
+@extern("__mp_analog_resolution")
+fun analog_resolution(bits: i32)
+
+// Read raw ADC value for the given GPIO pin.
+// Returns 0–4095 (12-bit default). Returns -1 for unsupported pins.
+// Works on all ESP32 variants — pin mapping resolved by IDF automatically.
+// Note: ADC2 pins conflict with WiFi; use ADC1 pins when WiFi is active.
+@extern("__mp_analog_read")
+fun analog_read(pin: i32): i32

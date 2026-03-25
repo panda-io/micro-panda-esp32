@@ -1,4 +1,4 @@
-import gpio::*
+import digital::*
 import pwm::*
 import rtos::*
 import log::*
