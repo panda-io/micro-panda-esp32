@@ -1,4 +1,8 @@
-@raw("#include \"driver/gpio.h\"")
+// ── ESP-IDF GPIO bindings (private) ──────────────────────────────────────────
+
+@raw("""
+#include "driver/gpio.h"
+""")
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
@@ -29,7 +33,7 @@ fun _gpio_get_level(pin: i32) i32
 @extern("gpio_set_pull_mode")
 fun _gpio_set_pull_mode(pin: i32, pull: i32)
 
-// ── Arduino-like API ──────────────────────────────────────────────────────────
+// ── public API ────────────────────────────────────────────────────────────────
 
 fun pin_mode(pin: i32, mode: PinMode)
     _gpio_reset_pin(pin)

@@ -77,4 +77,5 @@ Desktop.ini
 *.suo       # Visual Studio Solution User Options
 *.sln.docstates # Visual Studio
 
-main/.micro-panda/*
+.micro-panda/*
+.vscode/*

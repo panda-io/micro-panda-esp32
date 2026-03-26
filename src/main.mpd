@@ -1,0 +1,69 @@
+import digital::*
+import pwm::*
+import rtos::*
+import log::*
+
+const LED_PIN:    i32 = 2
+const FADE_STEP:  i32 = 32
+const FADE_DELAY: i32 = 20
+const BLINK_MS:   i32 = 500
+
+var duty: i32 = 0
+var dir:  i32 = 1
+var task_handler: &void = null
+
+fun blink()
+    pin_mode(LED_PIN, PinMode.OUTPUT)
+    var args: i32[2]
+    while true
+        digital_write(LED_PIN, PinLevel.HIGH)
+        delay_ms(BLINK_MS)
+        digital_write(LED_PIN, PinLevel.LOW)
+        delay_ms(BLINK_MS)
+        args[0] = time_ms()
+        args[1] = ticks()
+        info_args("current time: {0i} ms", args)
+        info_args("current ticks: {1i}", args)
+
+fun fade()
+    pwm_timer(PwmTimer.TIMER0, 5000)
+    pwm_attach(LED_PIN, PwmTimer.TIMER0)
+    while true
+        pwm_start(LED_PIN, duty)
+        duty += dir * FADE_STEP
+        if duty >= 1023
+            duty = 1023
+            dir = -1
+        if duty <= 0
+            duty = 0
+            dir = 1
+        delay_ms(FADE_DELAY)
+
+fun task_producer()
+    var count: i32 = 10
+    var args: i32[1]
+    args[0] = core_id()
+    while count > 0
+        info_args("produce job in cpu core: {0i}", args)
+        task_notify(task_handler)
+        count -= 1
+        delay_ms(512)
+    task_exit()
+
+fun task_consumer()
+    var args: i32[1]
+    args[0] = core_id()
+    while true
+        task_wait()
+        info_args("executing task in cpu core: {0i}", args)
+
+fun app_main()
+    info("micro-panda esp32 ready")
+
+    task_handler = task_create_pinned(task_consumer, 1024, 1, 1)
+    task_create(task_producer, 1024, 1)
+
+    blink()
+    // fade()
+    task_exit()
+
