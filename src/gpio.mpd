@@ -1,4 +1,5 @@
 // ── ESP-IDF GPIO bindings ─────────────────────────────────────────────────────
+// Requires: esp_driver_gpio
 
 @raw("""
 #include "driver/gpio.h"

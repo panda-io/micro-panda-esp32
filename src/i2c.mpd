@@ -1,4 +1,5 @@
 // ── I2C master bindings ───────────────────────────────────────────────────────
+// Requires: esp_driver_i2c
 
 @raw("""
 #include "driver/i2c_master.h"
