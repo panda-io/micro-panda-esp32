@@ -1,5 +1,3 @@
-import config::*
-
 // ── ESP-IDF LEDC bindings (private) ──────────────────────────────────────────
 
 @raw("""

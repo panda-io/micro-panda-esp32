@@ -24,6 +24,6 @@ if(NOT CMAKE_SCRIPT_MODE_FILE)
 endif()
 
 idf_component_register(
-    SRCS    "esp32.c"
+    SRCS "esp32.c"
     INCLUDE_DIRS "."
     REQUIRES esp_driver_ledc esp_driver_gpio esp_adc)
