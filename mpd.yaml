@@ -2,7 +2,7 @@ name: micro-panda-esp32
 version: 0.1.0
 
 src: src/
-out: out/
+out: main/
 
 platforms:
   esp32:
