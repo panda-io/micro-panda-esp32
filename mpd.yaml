@@ -1,4 +1,4 @@
-name: micro-panda-esp32
+name: esp32
 version: 0.1.0
 
 targets:
