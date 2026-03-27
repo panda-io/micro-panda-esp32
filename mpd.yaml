@@ -1,6 +1,10 @@
 name: esp32
 version: 0.1.0
 
+# Default config — auto-merged when this dep is used (project config overrides).
+# Contains compile-time pool sizes required by @raw C blocks in i2c.mpd, spi.mpd, etc.
+default_config: esp32.yaml
+
 # IDF component requirements — add these to your build system:
 #   idf_component_register REQUIRES (CMakeLists.txt)
 #   or lib_deps (platformio.ini)
