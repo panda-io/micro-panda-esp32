@@ -1,4 +1,5 @@
-// ── ESP-IDF GPIO bindings (private) ──────────────────────────────────────────
+// ── ESP-IDF GPIO bindings ─────────────────────────────────────────────────────
+// Requires: esp_driver_gpio
 
 @raw("""
 #include "driver/gpio.h"
@@ -6,13 +7,13 @@
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
-enum PinMode
+enum GpioMode
     INPUT          = 1  // GPIO_MODE_INPUT
     OUTPUT         = 3  // GPIO_MODE_OUTPUT
     INPUT_PULLUP   = 5  // INPUT + internal pull-up
     INPUT_PULLDOWN = 6  // INPUT + internal pull-down
 
-enum PinLevel
+enum GpioLevel
     LOW  = 0
     HIGH = 1
 
@@ -35,21 +36,21 @@ fun _gpio_set_pull_mode(pin: i32, pull: i32)
 
 // ── public API ────────────────────────────────────────────────────────────────
 
-fun pin_mode(pin: i32, mode: PinMode)
+fun gpio_mode(pin: i32, mode: GpioMode)
     _gpio_reset_pin(pin)
-    if mode == PinMode.INPUT_PULLUP
-        _gpio_set_direction(pin, i32(PinMode.INPUT))
+    if mode == GpioMode.INPUT_PULLUP
+        _gpio_set_direction(pin, i32(GpioMode.INPUT))
         _gpio_set_pull_mode(pin, 0)  // GPIO_PULLUP_ONLY = 0
-    else if mode == PinMode.INPUT_PULLDOWN
-        _gpio_set_direction(pin, i32(PinMode.INPUT))
+    else if mode == GpioMode.INPUT_PULLDOWN
+        _gpio_set_direction(pin, i32(GpioMode.INPUT))
         _gpio_set_pull_mode(pin, 1)  // GPIO_PULLDOWN_ONLY = 1
     else
         _gpio_set_direction(pin, i32(mode))
 
 @inline
-fun digital_write(pin: i32, value: PinLevel)
+fun gpio_write(pin: i32, value: GpioLevel)
     _gpio_set_level(pin, i32(value))
 
 @inline
-fun digital_read(pin: i32) PinLevel
-    return PinLevel(_gpio_get_level(pin))
+fun gpio_read(pin: i32) GpioLevel
+    return GpioLevel(_gpio_get_level(pin))

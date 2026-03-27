@@ -1,24 +1,31 @@
-import digital::*
+import gpio::*
 import pwm::*
 import rtos::*
 import log::*
+import i2c::*
+import ssd1306::*
 
 const LED_PIN:    i32 = 2
 const FADE_STEP:  i32 = 32
 const FADE_DELAY: i32 = 20
 const BLINK_MS:   i32 = 500
 
+// SSD1306 wiring: SDA=21, SCL=22 (ESP32 default I2C pins), addr=0x3C
+const OLED_SDA:  i32 = 21
+const OLED_SCL:  i32 = 22
+const OLED_ADDR: i32 = 0x3C
+
 var duty: i32 = 0
 var dir:  i32 = 1
 var task_handler: &void = null
 
 fun blink()
-    pin_mode(LED_PIN, PinMode.OUTPUT)
+    gpio_mode(LED_PIN, GpioMode.OUTPUT)
     var args: i32[2]
     while true
-        digital_write(LED_PIN, PinLevel.HIGH)
+        gpio_write(LED_PIN, GpioLevel.HIGH)
         delay_ms(BLINK_MS)
-        digital_write(LED_PIN, PinLevel.LOW)
+        gpio_write(LED_PIN, GpioLevel.LOW)
         delay_ms(BLINK_MS)
         args[0] = time_ms()
         args[1] = ticks()
@@ -57,8 +64,38 @@ fun task_consumer()
         task_wait()
         info_args("executing task in cpu core: {0i}", args)
 
+fun oled_demo()
+    var bus: i32 = i2c_init(0, OLED_SDA, OLED_SCL, 400000)
+    if bus < 0
+        info("i2c init failed")
+        return
+    var dev: i32 = i2c_open(bus, OLED_ADDR)
+    if dev < 0
+        info("oled open failed")
+        return
+    ssd1306_init(dev)
+    var hello: u8[14]
+    hello[0]  = 'M'
+    hello[1]  = 'i'
+    hello[2]  = 'c'
+    hello[3]  = 'r'
+    hello[4]  = 'o'
+    hello[5]  = '-'
+    hello[6]  = 'P'
+    hello[7]  = 'a'
+    hello[8]  = 'n'
+    hello[9]  = 'd'
+    hello[10] = 'a'
+    hello[11] = ' '
+    hello[12] = ':'
+    hello[13] = ')'
+    ssd1306_str(4, 28, hello, 14)
+    ssd1306_flush(dev)
+
 fun app_main()
     info("micro-panda esp32 ready")
+
+    oled_demo()
 
     task_handler = task_create_pinned(task_consumer, 1024, 1, 1)
     task_create(task_producer, 1024, 1)

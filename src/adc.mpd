@@ -1,4 +1,5 @@
 // ── ADC bindings ──────────────────────────────────────────────────────────
+// Requires: esp_adc
 
 @raw("""
 #include "esp_adc/adc_oneshot.h"
@@ -21,12 +22,12 @@ static inline adc_oneshot_unit_handle_t __mp_adc_ensure_unit(adc_unit_t unit) {
     return __mp_adc_unit[unit];
 }
 
-static inline void __mp_analog_resolution(int32_t bits) {
+static inline void __mp_adc_resolution(int32_t bits) {
     __mp_adc_bits = (adc_bitwidth_t)bits;
     for (int i = 0; i < 10; i++) { __mp_adc_ch_init[0][i] = false; __mp_adc_ch_init[1][i] = false; }
 }
 
-static inline int32_t __mp_analog_read(int32_t pin) {
+static inline int32_t __mp_adc_read(int32_t pin) {
     adc_unit_t    unit;
     adc_channel_t ch;
     // adc_oneshot_io_to_channel resolves pin → unit + channel for any ESP32 variant
@@ -66,11 +67,11 @@ static inline adc_cali_handle_t __mp_adc_cali_init(adc_unit_t unit, adc_channel_
     return handle;
 }
 
-static inline int32_t __mp_analog_read_mv(int32_t pin) {
+static inline int32_t __mp_adc_read_mv(int32_t pin) {
     adc_unit_t    unit;
     adc_channel_t ch;
     if (adc_oneshot_io_to_channel((int)pin, &unit, &ch) != ESP_OK) return -1;
-    int32_t raw = __mp_analog_read(pin);
+    int32_t raw = __mp_adc_read(pin);
     if (raw < 0) return -1;
     if (__mp_adc_cali[unit][ch] == NULL)
         __mp_adc_cali[unit][ch] = __mp_adc_cali_init(unit, ch);
@@ -84,19 +85,19 @@ static inline int32_t __mp_analog_read_mv(int32_t pin) {
 // ── public API ────────────────────────────────────────────────────────────
 
 // Set ADC resolution in bits (9–12). Default is 12 (0–4095).
-// Call once at startup before analog_read.
-@extern("__mp_analog_resolution")
-fun analog_resolution(bits: i32)
+// Call once at startup before adc_read.
+@extern("__mp_adc_resolution")
+fun adc_resolution(bits: i32)
 
 // Read raw ADC value for the given GPIO pin.
 // Returns 0–4095 (12-bit default). Returns -1 for unsupported pins.
 // Works on all ESP32 variants — pin mapping resolved by IDF automatically.
 // Note: ADC2 pins conflict with WiFi; use ADC1 pins when WiFi is active.
-@extern("__mp_analog_read")
-fun analog_read(pin: i32): i32
+@extern("__mp_adc_read")
+fun adc_read(pin: i32) i32
 
 // Read calibrated millivolts for the given GPIO pin.
 // Uses IDF curve-fitting or line-fitting calibration (eFuse-based, per-chip accurate).
 // Falls back to linear formula if no calibration data available on this chip.
-@extern("__mp_analog_read_mv")
-fun analog_read_mv(pin: i32): i32
+@extern("__mp_adc_read_mv")
+fun adc_read_mv(pin: i32) i32

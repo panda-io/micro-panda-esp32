@@ -1,16 +1,22 @@
-name: micro-panda-esp32
+name: esp32
 version: 0.1.0
 
-src: src/
-out: main/
-
-platforms:
-  esp32:
-    entry_fn: app_main
+# IDF component requirements — add these to your build system:
+#   idf_component_register REQUIRES (CMakeLists.txt)
+#   or lib_deps (platformio.ini)
+#
+#   gpio, pwm, adc : esp_driver_gpio  esp_driver_ledc  esp_adc
+#   i2c            : esp_driver_i2c
+#   spi            : esp_driver_spi
 
 targets:
   esp32:
     entry: main
-    platform: esp32
+    src: src/
+    out: main/esp32.c
+    config: esp32.yaml
+    type: c
     flags: [MCU32]
-    build_cmd: idf.py build  # for `mpd build esp32`; CMake calls `mpd gen esp32` directly
+    build_cmd: idf.py build
+    gen:
+      entry: app_main

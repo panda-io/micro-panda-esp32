@@ -1,0 +1,124 @@
+// ── I2C master bindings ───────────────────────────────────────────────────────
+// Requires: esp_driver_i2c
+
+@raw("""
+#include "driver/i2c_master.h"
+
+static i2c_master_bus_handle_t __mp_i2c_buses[I2C_MAX_BUSES];
+static i2c_master_dev_handle_t __mp_i2c_devs[I2C_MAX_DEVICES];
+static uint32_t                __mp_i2c_freq[I2C_MAX_BUSES];
+
+// Initialize I2C bus. Returns bus index or -1 on error.
+static inline int32_t __mp_i2c_init(int32_t bus, int32_t sda, int32_t scl, int32_t freq_hz) {
+    if (bus < 0 || bus >= I2C_MAX_BUSES) return -1;
+    if (__mp_i2c_buses[bus] != NULL) return bus; // already initialized
+    i2c_master_bus_config_t cfg = {
+        .i2c_port    = (i2c_port_num_t)bus,
+        .sda_io_num  = (gpio_num_t)sda,
+        .scl_io_num  = (gpio_num_t)scl,
+        .clk_source  = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
+    };
+    esp_err_t err = i2c_new_master_bus(&cfg, &__mp_i2c_buses[bus]);
+    if (err != ESP_OK) return -1;
+    __mp_i2c_freq[bus] = (uint32_t)freq_hz;
+    return bus;
+}
+
+// Open a device on the bus by 7-bit address. Returns device slot or -1 on error.
+static inline int32_t __mp_i2c_open(int32_t bus, int32_t addr) {
+    if (bus < 0 || bus >= I2C_MAX_BUSES || __mp_i2c_buses[bus] == NULL) return -1;
+    for (int i = 0; i < I2C_MAX_DEVICES; i++) {
+        if (__mp_i2c_devs[i] == NULL) {
+            i2c_device_config_t dev_cfg = {
+                .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+                .device_address  = (uint16_t)addr,
+                .scl_speed_hz    = __mp_i2c_freq[bus],
+            };
+            esp_err_t err = i2c_master_bus_add_device(__mp_i2c_buses[bus], &dev_cfg, &__mp_i2c_devs[i]);
+            return err == ESP_OK ? i : -1;
+        }
+    }
+    return -1; // no free slot
+}
+
+static inline void __mp_i2c_close(int32_t dev) {
+    if (dev < 0 || dev >= I2C_MAX_DEVICES || __mp_i2c_devs[dev] == NULL) return;
+    i2c_master_bus_rm_device(__mp_i2c_devs[dev]);
+    __mp_i2c_devs[dev] = NULL;
+}
+
+static inline int32_t __mp_i2c_write(int32_t dev, __Slice_uint8_t data, int32_t len) {
+    if (dev < 0 || dev >= I2C_MAX_DEVICES || __mp_i2c_devs[dev] == NULL) return -1;
+    return (int32_t)i2c_master_transmit(__mp_i2c_devs[dev], data.ptr, (size_t)len, I2C_TIMEOUT_MS);
+}
+
+static inline int32_t __mp_i2c_read(int32_t dev, __Slice_uint8_t buf, int32_t len) {
+    if (dev < 0 || dev >= I2C_MAX_DEVICES || __mp_i2c_devs[dev] == NULL) return -1;
+    return (int32_t)i2c_master_receive(__mp_i2c_devs[dev], buf.ptr, (size_t)len, I2C_TIMEOUT_MS);
+}
+
+static inline int32_t __mp_i2c_write_read(int32_t dev,
+                                           __Slice_uint8_t tx, int32_t tx_len,
+                                           __Slice_uint8_t rx, int32_t rx_len) {
+    if (dev < 0 || dev >= I2C_MAX_DEVICES || __mp_i2c_devs[dev] == NULL) return -1;
+    return (int32_t)i2c_master_transmit_receive(
+        __mp_i2c_devs[dev],
+        tx.ptr, (size_t)tx_len,
+        rx.ptr, (size_t)rx_len,
+        I2C_TIMEOUT_MS);
+}
+""")
+
+// ── private bindings ──────────────────────────────────────────────────────────
+
+@extern("__mp_i2c_init")
+fun _i2c_init(bus: i32, sda: i32, scl: i32, freq_hz: i32) i32
+
+@extern("__mp_i2c_open")
+fun _i2c_open(bus: i32, addr: i32) i32
+
+@extern("__mp_i2c_close")
+fun _i2c_close(dev: i32)
+
+@extern("__mp_i2c_write")
+fun _i2c_write(dev: i32, data: u8[], len: i32) i32
+
+@extern("__mp_i2c_read")
+fun _i2c_read(dev: i32, buf: u8[], len: i32) i32
+
+@extern("__mp_i2c_write_read")
+fun _i2c_write_read(dev: i32, tx: u8[], tx_len: i32, rx: u8[], rx_len: i32) i32
+
+// ── public API ────────────────────────────────────────────────────────────────
+
+// Initialize I2C bus (0 or 1).
+// Returns bus handle or -1 on error.
+fun i2c_init(bus: i32, sda: i32, scl: i32, freq_hz: i32) i32
+    return _i2c_init(bus, sda, scl, freq_hz)
+
+// Open a device by 7-bit address on the bus.
+// Returns device handle or -1 on error.
+fun i2c_open(bus: i32, addr: i32) i32
+    return _i2c_open(bus, addr)
+
+// Close and release a device handle.
+fun i2c_close(dev: i32)
+    _i2c_close(dev)
+
+// Write len bytes from data to the device.
+// Returns 0 on success, ESP error code on failure.
+fun i2c_write(dev: i32, data: u8[], len: i32) i32
+    return _i2c_write(dev, data, len)
+
+// Read len bytes from the device into buf.
+// Returns 0 on success, ESP error code on failure.
+fun i2c_read(dev: i32, buf: u8[], len: i32) i32
+    return _i2c_read(dev, buf, len)
+
+// Write tx_len bytes then read rx_len bytes in one transaction.
+// Common for register reads: write [reg_addr], read [value].
+// Returns 0 on success, ESP error code on failure.
+fun i2c_write_read(dev: i32, tx: u8[], tx_len: i32, rx: u8[], rx_len: i32) i32
+    return _i2c_write_read(dev, tx, tx_len, rx, rx_len)

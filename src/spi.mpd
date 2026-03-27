@@ -1,0 +1,141 @@
+// ── SPI master bindings ───────────────────────────────────────────────────────
+// Requires: esp_driver_spi
+
+@raw("""
+#include "driver/spi_master.h"
+
+static spi_device_handle_t __mp_spi_devs[SPI_MAX_DEVICES];
+
+// Initialize SPI bus. bus=0 → SPI2_HOST, bus=1 → SPI3_HOST.
+// Pass miso=-1 for write-only (e.g. display).
+static inline int32_t __mp_spi_init(int32_t bus, int32_t mosi, int32_t miso, int32_t clk) {
+    if (bus < 0 || bus >= SPI_MAX_BUSES) return -1;
+    spi_bus_config_t cfg = {
+        .mosi_io_num     = mosi,
+        .miso_io_num     = miso,  // -1 = not used
+        .sclk_io_num     = clk,
+        .quadwp_io_num   = -1,
+        .quadhd_io_num   = -1,
+    };
+    spi_host_device_t host = (spi_host_device_t)(bus + 1); // SPI2_HOST=1, SPI3_HOST=2
+#if SPI_DMA
+    esp_err_t err = spi_bus_initialize(host, &cfg, SPI_DMA_CH_AUTO);
+#else
+    esp_err_t err = spi_bus_initialize(host, &cfg, SPI_DMA_DISABLED);
+#endif
+    return err == ESP_OK ? bus : -1;
+}
+
+// Open a device on the bus. Returns device slot or -1 on error.
+static inline int32_t __mp_spi_open(int32_t bus, int32_t cs, int32_t freq_hz, int32_t mode) {
+    if (bus < 0 || bus >= SPI_MAX_BUSES) return -1;
+    for (int i = 0; i < SPI_MAX_DEVICES; i++) {
+        if (__mp_spi_devs[i] == NULL) {
+            spi_device_interface_config_t dev_cfg = {
+                .clock_speed_hz = freq_hz,
+                .mode           = (uint8_t)mode,
+                .spics_io_num   = cs,
+                .queue_size     = 1,
+            };
+            spi_host_device_t host = (spi_host_device_t)(bus + 1);
+            esp_err_t err = spi_bus_add_device(host, &dev_cfg, &__mp_spi_devs[i]);
+            return err == ESP_OK ? i : -1;
+        }
+    }
+    return -1; // no free slot
+}
+
+static inline void __mp_spi_close(int32_t dev) {
+    if (dev < 0 || dev >= SPI_MAX_DEVICES || __mp_spi_devs[dev] == NULL) return;
+    spi_bus_remove_device(__mp_spi_devs[dev]);
+    __mp_spi_devs[dev] = NULL;
+}
+
+// Write only — TX len bytes, RX ignored.
+static inline int32_t __mp_spi_write(int32_t dev, __Slice_uint8_t data, int32_t len) {
+    if (dev < 0 || dev >= SPI_MAX_DEVICES || __mp_spi_devs[dev] == NULL) return -1;
+    spi_transaction_t t = {
+        .length    = (size_t)len * 8, // bits
+        .tx_buffer = data.ptr,
+        .rx_buffer = NULL,
+    };
+    return (int32_t)spi_device_transmit(__mp_spi_devs[dev], &t);
+}
+
+// Read only — TX zeros, RX captured.
+static inline int32_t __mp_spi_read(int32_t dev, __Slice_uint8_t buf, int32_t len) {
+    if (dev < 0 || dev >= SPI_MAX_DEVICES || __mp_spi_devs[dev] == NULL) return -1;
+    spi_transaction_t t = {
+        .length    = (size_t)len * 8,
+        .tx_buffer = NULL,
+        .rx_buffer = buf.ptr,
+    };
+    return (int32_t)spi_device_transmit(__mp_spi_devs[dev], &t);
+}
+
+// Full duplex — send tx while receiving into rx simultaneously.
+static inline int32_t __mp_spi_transfer(int32_t dev,
+                                         __Slice_uint8_t tx, __Slice_uint8_t rx,
+                                         int32_t len) {
+    if (dev < 0 || dev >= SPI_MAX_DEVICES || __mp_spi_devs[dev] == NULL) return -1;
+    spi_transaction_t t = {
+        .length    = (size_t)len * 8,
+        .tx_buffer = tx.ptr,
+        .rx_buffer = rx.ptr,
+    };
+    return (int32_t)spi_device_transmit(__mp_spi_devs[dev], &t);
+}
+""")
+
+// ── private bindings ──────────────────────────────────────────────────────────
+
+@extern("__mp_spi_init")
+fun _spi_init(bus: i32, mosi: i32, miso: i32, clk: i32) i32
+
+@extern("__mp_spi_open")
+fun _spi_open(bus: i32, cs: i32, freq_hz: i32, mode: i32) i32
+
+@extern("__mp_spi_close")
+fun _spi_close(dev: i32)
+
+@extern("__mp_spi_write")
+fun _spi_write(dev: i32, data: u8[], len: i32) i32
+
+@extern("__mp_spi_read")
+fun _spi_read(dev: i32, buf: u8[], len: i32) i32
+
+@extern("__mp_spi_transfer")
+fun _spi_transfer(dev: i32, tx: u8[], rx: u8[], len: i32) i32
+
+// ── public API ────────────────────────────────────────────────────────────────
+
+// Initialize SPI bus (0 = SPI2, 1 = SPI3).
+// Pass miso = -1 for write-only devices (e.g. displays).
+// Returns bus handle or -1 on error.
+fun spi_init(bus: i32, mosi: i32, miso: i32, clk: i32) i32
+    return _spi_init(bus, mosi, miso, clk)
+
+// Open a device on the bus with its own cs pin, clock speed and SPI mode (0–3).
+// All devices on the same bus stay open simultaneously.
+// Returns device handle or -1 on error.
+fun spi_open(bus: i32, cs: i32, freq_hz: i32, mode: i32) i32
+    return _spi_open(bus, cs, freq_hz, mode)
+
+// Close and release a device handle.
+fun spi_close(dev: i32)
+    _spi_close(dev)
+
+// Write len bytes to device (TX only, RX ignored).
+// Returns 0 on success, ESP error code on failure.
+fun spi_write(dev: i32, data: u8[], len: i32) i32
+    return _spi_write(dev, data, len)
+
+// Read len bytes from device (TX zeros, RX captured).
+// Returns 0 on success, ESP error code on failure.
+fun spi_read(dev: i32, buf: u8[], len: i32) i32
+    return _spi_read(dev, buf, len)
+
+// Full-duplex transfer: send tx while receiving into rx, len bytes each.
+// Returns 0 on success, ESP error code on failure.
+fun spi_transfer(dev: i32, tx: u8[], rx: u8[], len: i32) i32
+    return _spi_transfer(dev, tx, rx, len)

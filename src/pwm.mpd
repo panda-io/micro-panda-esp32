@@ -1,6 +1,5 @@
-import config::*
-
 // ── ESP-IDF LEDC bindings (private) ──────────────────────────────────────────
+// Requires: esp_driver_ledc
 
 @raw("""
 #include "driver/ledc.h"
