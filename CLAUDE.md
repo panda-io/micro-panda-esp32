@@ -39,10 +39,10 @@ idf.py flash monitor
 
 ## Compiler
 
-Micro-Panda compiler lives at `/Users/sang/Dev/panda-io/micro-panda-dart/`.
+Micro-Panda compiler lives at `..o/micro-panda-dart/`.
 Rebuild after compiler changes:
 ```sh
-cd /Users/sang/Dev/panda-io/micro-panda-dart && ./install.sh
+cd ~/Dev/panda-io/micro-panda-dart && ./install.sh
 ```
 
 ## Conventions
