@@ -8,9 +8,11 @@ if(NOT CMAKE_SCRIPT_MODE_FILE)
     # Run mpd gen during CMake configure to ensure esp32.c exists on first run.
     execute_process(
         COMMAND mpd -C ${MPD_ROOT} gen esp32
-        RESULT_VARIABLE MPD_GEN_RESULT)
+        RESULT_VARIABLE MPD_GEN_RESULT
+        OUTPUT_VARIABLE MPD_GEN_OUT
+        ERROR_VARIABLE  MPD_GEN_ERR)
     if(NOT MPD_GEN_RESULT EQUAL 0)
-        message(FATAL_ERROR "mpd gen esp32 failed")
+        message(FATAL_ERROR "mpd gen esp32 failed:\n${MPD_GEN_ERR}${MPD_GEN_OUT}")
     endif()
 
     # Rebuild esp32.c incrementally whenever any source file changes.
@@ -21,9 +23,10 @@ if(NOT CMAKE_SCRIPT_MODE_FILE)
         DEPENDS ${MPD_SOURCES}
                 ${MPD_ROOT}/mpd.yaml
         COMMENT "Generating C from Micro-Panda sources (mpd gen esp32)")
+    file(GLOB MPD_SOURCES ${MPD_ROOT}/src/*.mpd)
 endif()
 
 idf_component_register(
-    SRCS
+    SRCS "esp32.c"
     INCLUDE_DIRS "."
     REQUIRES esp_driver_ledc esp_driver_gpio esp_adc esp_driver_i2c esp_driver_spi)
