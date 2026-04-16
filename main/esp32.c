@@ -152,140 +152,6 @@ static inline int32_t __mp_i2c_write_read(int32_t dev,
         rx.ptr, (size_t)rx_len,
         I2C_TIMEOUT_MS);
 }
-#include <string.h>
-
-// 5×8 ASCII font, glyphs 0x20–0x7E (96 chars), column-major, LSB = top row.
-static const uint8_t __mp_font5x8[][5] = {
-    {0x00,0x00,0x00,0x00,0x00}, // ' '
-    {0x00,0x00,0x5F,0x00,0x00}, // '!'
-    {0x00,0x07,0x00,0x07,0x00}, // '"'
-    {0x14,0x7F,0x14,0x7F,0x14}, // '#'
-    {0x24,0x2A,0x7F,0x2A,0x12}, // '$'
-    {0x23,0x13,0x08,0x64,0x62}, // '%'
-    {0x36,0x49,0x55,0x22,0x50}, // '&'
-    {0x00,0x05,0x03,0x00,0x00}, // '\''
-    {0x00,0x1C,0x22,0x41,0x00}, // '('
-    {0x00,0x41,0x22,0x1C,0x00}, // ')'
-    {0x14,0x08,0x3E,0x08,0x14}, // '*'
-    {0x08,0x08,0x3E,0x08,0x08}, // '+'
-    {0x00,0x50,0x30,0x00,0x00}, // ','
-    {0x08,0x08,0x08,0x08,0x08}, // '-'
-    {0x00,0x60,0x60,0x00,0x00}, // '.'
-    {0x20,0x10,0x08,0x04,0x02}, // '/'
-    {0x3E,0x51,0x49,0x45,0x3E}, // '0'
-    {0x00,0x42,0x7F,0x40,0x00}, // '1'
-    {0x42,0x61,0x51,0x49,0x46}, // '2'
-    {0x21,0x41,0x45,0x4B,0x31}, // '3'
-    {0x18,0x14,0x12,0x7F,0x10}, // '4'
-    {0x27,0x45,0x45,0x45,0x39}, // '5'
-    {0x3C,0x4A,0x49,0x49,0x30}, // '6'
-    {0x01,0x71,0x09,0x05,0x03}, // '7'
-    {0x36,0x49,0x49,0x49,0x36}, // '8'
-    {0x06,0x49,0x49,0x29,0x1E}, // '9'
-    {0x00,0x36,0x36,0x00,0x00}, // ':'
-    {0x00,0x56,0x36,0x00,0x00}, // ';'
-    {0x08,0x14,0x22,0x41,0x00}, // '<'
-    {0x14,0x14,0x14,0x14,0x14}, // '='
-    {0x00,0x41,0x22,0x14,0x08}, // '>'
-    {0x02,0x01,0x51,0x09,0x06}, // '?'
-    {0x32,0x49,0x79,0x41,0x3E}, // '@'
-    {0x7E,0x11,0x11,0x11,0x7E}, // 'A'
-    {0x7F,0x49,0x49,0x49,0x36}, // 'B'
-    {0x3E,0x41,0x41,0x41,0x22}, // 'C'
-    {0x7F,0x41,0x41,0x22,0x1C}, // 'D'
-    {0x7F,0x49,0x49,0x49,0x41}, // 'E'
-    {0x7F,0x09,0x09,0x09,0x01}, // 'F'
-    {0x3E,0x41,0x49,0x49,0x7A}, // 'G'
-    {0x7F,0x08,0x08,0x08,0x7F}, // 'H'
-    {0x00,0x41,0x7F,0x41,0x00}, // 'I'
-    {0x20,0x40,0x41,0x3F,0x01}, // 'J'
-    {0x7F,0x08,0x14,0x22,0x41}, // 'K'
-    {0x7F,0x40,0x40,0x40,0x40}, // 'L'
-    {0x7F,0x02,0x0C,0x02,0x7F}, // 'M'
-    {0x7F,0x04,0x08,0x10,0x7F}, // 'N'
-    {0x3E,0x41,0x41,0x41,0x3E}, // 'O'
-    {0x7F,0x09,0x09,0x09,0x06}, // 'P'
-    {0x3E,0x41,0x51,0x21,0x5E}, // 'Q'
-    {0x7F,0x09,0x19,0x29,0x46}, // 'R'
-    {0x46,0x49,0x49,0x49,0x31}, // 'S'
-    {0x01,0x01,0x7F,0x01,0x01}, // 'T'
-    {0x3F,0x40,0x40,0x40,0x3F}, // 'U'
-    {0x1F,0x20,0x40,0x20,0x1F}, // 'V'
-    {0x3F,0x40,0x38,0x40,0x3F}, // 'W'
-    {0x63,0x14,0x08,0x14,0x63}, // 'X'
-    {0x07,0x08,0x70,0x08,0x07}, // 'Y'
-    {0x61,0x51,0x49,0x45,0x43}, // 'Z'
-    {0x00,0x7F,0x41,0x41,0x00}, // '['
-    {0x02,0x04,0x08,0x10,0x20}, // '\\'
-    {0x00,0x41,0x41,0x7F,0x00}, // ']'
-    {0x04,0x02,0x01,0x02,0x04}, // '^'
-    {0x40,0x40,0x40,0x40,0x40}, // '_'
-    {0x00,0x01,0x02,0x04,0x00}, // '`'
-    {0x20,0x54,0x54,0x54,0x78}, // 'a'
-    {0x7F,0x48,0x44,0x44,0x38}, // 'b'
-    {0x38,0x44,0x44,0x44,0x20}, // 'c'
-    {0x38,0x44,0x44,0x48,0x7F}, // 'd'
-    {0x38,0x54,0x54,0x54,0x18}, // 'e'
-    {0x08,0x7E,0x09,0x01,0x02}, // 'f'
-    {0x0C,0x52,0x52,0x52,0x3E}, // 'g'
-    {0x7F,0x08,0x04,0x04,0x78}, // 'h'
-    {0x00,0x44,0x7D,0x40,0x00}, // 'i'
-    {0x20,0x40,0x44,0x3D,0x00}, // 'j'
-    {0x7F,0x10,0x28,0x44,0x00}, // 'k'
-    {0x00,0x41,0x7F,0x40,0x00}, // 'l'
-    {0x7C,0x04,0x18,0x04,0x78}, // 'm'
-    {0x7C,0x08,0x04,0x04,0x78}, // 'n'
-    {0x38,0x44,0x44,0x44,0x38}, // 'o'
-    {0x7C,0x14,0x14,0x14,0x08}, // 'p'
-    {0x08,0x14,0x14,0x18,0x7C}, // 'q'
-    {0x7C,0x08,0x04,0x04,0x08}, // 'r'
-    {0x48,0x54,0x54,0x54,0x20}, // 's'
-    {0x04,0x3F,0x44,0x40,0x20}, // 't'
-    {0x3C,0x40,0x40,0x40,0x7C}, // 'u'
-    {0x1C,0x20,0x40,0x20,0x1C}, // 'v'
-    {0x3C,0x40,0x30,0x40,0x3C}, // 'w'
-    {0x44,0x28,0x10,0x28,0x44}, // 'x'
-    {0x0C,0x50,0x50,0x50,0x3C}, // 'y'
-    {0x44,0x64,0x54,0x4C,0x44}, // 'z'
-    {0x00,0x08,0x36,0x41,0x00}, // '{'
-    {0x00,0x00,0x7F,0x00,0x00}, // '|'
-    {0x00,0x41,0x36,0x08,0x00}, // '}'
-    {0x10,0x08,0x08,0x10,0x08}, // '~'
-};
-
-// Zero pixel data; fb.ptr[0] must be set to 0x40 by caller (ssd1306_init).
-static inline void __mp_ssd1306_clear(__Slice_uint8_t fb) {
-    memset(fb.ptr + 1, 0, 1024);
-}
-
-// Fill pixel data with v (0x00 = all black, 0xFF = all white).
-static inline void __mp_ssd1306_fill(__Slice_uint8_t fb, uint8_t v) {
-    memset(fb.ptr + 1, v, 1024);
-}
-
-// Set (on!=0) or clear (on==0) pixel at (x, y). Out-of-bounds is silently ignored.
-static inline void __mp_ssd1306_pixel(__Slice_uint8_t fb, int32_t x, int32_t y, int32_t on) {
-    if ((uint32_t)x >= 128u || (uint32_t)y >= 64u) return;
-    uint8_t *p = fb.ptr + 1 + (y >> 3) * 128 + x;
-    uint8_t  m = (uint8_t)(1u << (y & 7));
-    if (on) *p |= m; else *p &= ~m;
-}
-
-// Draw one ASCII character (0x20–0x7E) at pixel position (x, y).
-static inline void __mp_ssd1306_char(__Slice_uint8_t fb, int32_t x, int32_t y, uint8_t c) {
-    if (c < 0x20 || c > 0x7E) return;
-    const uint8_t *g = __mp_font5x8[c - 0x20];
-    for (int col = 0; col < 5; col++) {
-        uint8_t bits = g[col];
-        for (int row = 0; row < 8; row++) {
-            int px = x + col, py = y + row;
-            if ((uint32_t)px >= 128u || (uint32_t)py >= 64u) continue;
-            uint8_t *p = fb.ptr + 1 + (py >> 3) * 128 + px;
-            uint8_t  m = (uint8_t)(1u << (py & 7));
-            if (bits & (1u << row)) *p |= m; else *p &= ~m;
-        }
-    }
-}
 #include <stdio.h>
 static inline int32_t __mp_float_to_bits(float f) { int32_t v; __builtin_memcpy(&v, &f, 4); return v; }
 static inline float __mp_bits_to_float(int32_t v) { float f; __builtin_memcpy(&f, &v, 4); return f; }
@@ -294,8 +160,7 @@ void main__blink(void);
 void main__fade(void);
 void main__task_producer(void);
 void main__task_consumer(void);
-void main__oled_demo(void);
-void main__app_main(void);
+void main__main(void);
 void gpio__gpio_mode(int32_t pin, GpioMode mode);
 static inline void gpio__gpio_write(int32_t pin, GpioLevel value);
 static inline GpioLevel gpio__gpio_read(int32_t pin);
@@ -318,15 +183,6 @@ void i2c__i2c_close(int32_t dev);
 int32_t i2c__i2c_write(int32_t dev, __Slice_uint8_t data, int32_t len);
 int32_t i2c__i2c_read(int32_t dev, __Slice_uint8_t buf, int32_t len);
 int32_t i2c__i2c_write_read(int32_t dev, __Slice_uint8_t tx, int32_t tx_len, __Slice_uint8_t rx, int32_t rx_len);
-static int32_t ssd1306___cmd1(int32_t dev, int32_t c);
-static int32_t ssd1306___cmd2(int32_t dev, int32_t c, int32_t v);
-int32_t ssd1306__ssd1306_init(int32_t dev);
-void ssd1306__ssd1306_clear(void);
-void ssd1306__ssd1306_fill(uint8_t v);
-void ssd1306__ssd1306_pixel(int32_t x, int32_t y, int32_t on);
-void ssd1306__ssd1306_char(int32_t x, int32_t y, uint8_t c);
-int32_t ssd1306__ssd1306_str(int32_t x, int32_t y, __Slice_uint8_t s, int32_t len);
-int32_t ssd1306__ssd1306_flush(int32_t dev);
 static void console___write_byte_default(uint8_t b);
 void console__init(__Fn_void_uint8_t write_byte);
 static inline void console__write_byte(uint8_t b);
@@ -378,9 +234,6 @@ int32_t main__duty = 0;
 int32_t main__dir = 1;
 void* main__task_handler = NULL;
 static int32_t pwm___pins[1];
-const int32_t ssd1306__SSD1306_W = 128;
-const int32_t ssd1306__SSD1306_H = 64;
-uint8_t ssd1306__fb[1025];
 static __Fn_void_uint8_t console___write_byte = console___write_byte_default;
 
 void main__blink(void) {
@@ -438,40 +291,8 @@ void main__task_consumer(void) {
   }
 }
 
-void main__oled_demo(void) {
-  int32_t bus = i2c__i2c_init(0, main__OLED_SDA, main__OLED_SCL, 400000);
-  if ((bus < 0)) {
-    log__info((__Slice_uint8_t){(uint8_t*)"i2c init failed", sizeof("i2c init failed") - 1});
-    return;
-  }
-  int32_t dev = i2c__i2c_open(bus, main__OLED_ADDR);
-  if ((dev < 0)) {
-    log__info((__Slice_uint8_t){(uint8_t*)"oled open failed", sizeof("oled open failed") - 1});
-    return;
-  }
-  ssd1306__ssd1306_init(dev);
-  uint8_t hello[14];
-  (hello[0] = 'M');
-  (hello[1] = 'i');
-  (hello[2] = 'c');
-  (hello[3] = 'r');
-  (hello[4] = 'o');
-  (hello[5] = '-');
-  (hello[6] = 'P');
-  (hello[7] = 'a');
-  (hello[8] = 'n');
-  (hello[9] = 'd');
-  (hello[10] = 'a');
-  (hello[11] = ' ');
-  (hello[12] = ':');
-  (hello[13] = ')');
-  ssd1306__ssd1306_str(4, 28, (__Slice_uint8_t){hello, 14}, 14);
-  ssd1306__ssd1306_flush(dev);
-}
-
-void main__app_main(void) {
+void main__main(void) {
   log__info((__Slice_uint8_t){(uint8_t*)"micro-panda esp32 ready", sizeof("micro-panda esp32 ready") - 1});
-  main__oled_demo();
   (main__task_handler = __mp_task_create_pinned(main__task_consumer, 1024, 1, 1));
   __mp_task_create(main__task_producer, 1024, 1);
   main__blink();
@@ -618,85 +439,6 @@ int32_t i2c__i2c_read(int32_t dev, __Slice_uint8_t buf, int32_t len) {
 
 int32_t i2c__i2c_write_read(int32_t dev, __Slice_uint8_t tx, int32_t tx_len, __Slice_uint8_t rx, int32_t rx_len) {
   return __mp_i2c_write_read(dev, tx, tx_len, rx, rx_len);
-}
-
-static int32_t ssd1306___cmd1(int32_t dev, int32_t c) {
-  uint8_t buf[2];
-  (buf[0] = 0x00);
-  (buf[1] = ((uint8_t)(c)));
-  return i2c__i2c_write(dev, (__Slice_uint8_t){buf, 2}, 2);
-}
-
-static int32_t ssd1306___cmd2(int32_t dev, int32_t c, int32_t v) {
-  uint8_t buf[3];
-  (buf[0] = 0x00);
-  (buf[1] = ((uint8_t)(c)));
-  (buf[2] = ((uint8_t)(v)));
-  return i2c__i2c_write(dev, (__Slice_uint8_t){buf, 3}, 3);
-}
-
-int32_t ssd1306__ssd1306_init(int32_t dev) {
-  (ssd1306__fb[0] = 0x40);
-  __mp_ssd1306_clear(ssd1306__fb);
-  ssd1306___cmd1(dev, 0xAE);
-  ssd1306___cmd2(dev, 0xD5, 0x80);
-  ssd1306___cmd2(dev, 0xA8, 0x3F);
-  ssd1306___cmd2(dev, 0xD3, 0x00);
-  ssd1306___cmd1(dev, 0x40);
-  ssd1306___cmd2(dev, 0x8D, 0x14);
-  ssd1306___cmd2(dev, 0x20, 0x00);
-  ssd1306___cmd1(dev, 0xA1);
-  ssd1306___cmd1(dev, 0xC8);
-  ssd1306___cmd2(dev, 0xDA, 0x12);
-  ssd1306___cmd2(dev, 0x81, 0xCF);
-  ssd1306___cmd2(dev, 0xD9, 0xF1);
-  ssd1306___cmd2(dev, 0xDB, 0x40);
-  ssd1306___cmd1(dev, 0xA4);
-  ssd1306___cmd1(dev, 0xA6);
-  return ssd1306___cmd1(dev, 0xAF);
-}
-
-void ssd1306__ssd1306_clear(void) {
-  __mp_ssd1306_clear(ssd1306__fb);
-}
-
-void ssd1306__ssd1306_fill(uint8_t v) {
-  __mp_ssd1306_fill(ssd1306__fb, v);
-}
-
-void ssd1306__ssd1306_pixel(int32_t x, int32_t y, int32_t on) {
-  __mp_ssd1306_pixel(ssd1306__fb, x, y, on);
-}
-
-void ssd1306__ssd1306_char(int32_t x, int32_t y, uint8_t c) {
-  __mp_ssd1306_char(ssd1306__fb, x, y, c);
-}
-
-int32_t ssd1306__ssd1306_str(int32_t x, int32_t y, __Slice_uint8_t s, int32_t len) {
-  int32_t i = 0;
-  int32_t cx = x;
-  while ((i < len)) {
-    __mp_ssd1306_char(ssd1306__fb, cx, y, s.ptr[i]);
-    (cx += 6);
-    (i += 1);
-  }
-  return cx;
-}
-
-int32_t ssd1306__ssd1306_flush(int32_t dev) {
-  uint8_t col[4];
-  (col[0] = 0x00);
-  (col[1] = 0x21);
-  (col[2] = 0x00);
-  (col[3] = 0x7F);
-  i2c__i2c_write(dev, (__Slice_uint8_t){col, 4}, 4);
-  uint8_t page[4];
-  (page[0] = 0x00);
-  (page[1] = 0x22);
-  (page[2] = 0x00);
-  (page[3] = 0x07);
-  i2c__i2c_write(dev, (__Slice_uint8_t){page, 4}, 4);
-  return i2c__i2c_write(dev, (__Slice_uint8_t){ssd1306__fb, 1025}, 1025);
 }
 
 static void console___write_byte_default(uint8_t b) {
@@ -1100,4 +842,6 @@ __Slice_uint8_t string__format(__Slice_uint8_t text, __Slice_uint8_t buf, __Slic
   }
   return (__Slice_uint8_t){buf.ptr, bi};
 }
+
+void app_main(void) { main__main(); }
 
